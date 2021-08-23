@@ -15,3 +15,5 @@ GPU is NVIDIA [GeForce RTX 3070 Ti]
 Pytorch Version 1.8.0
 
 TVM Version 0.8.dev0 
+
+part of the result is in notes.txt
