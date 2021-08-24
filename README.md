@@ -1,19 +1,81 @@
-# TVM-Transformer
-Using TVM to depoly 
+# Deploying Transformer and Bert Using Apache TVM
 
-- Transformer (Attention is All You Need) 
-- Bert (BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding) 
+## About
 
-on CPU and GPU
+CPU: AMD Ryzen 5600x
 
-### Configuration
+GPU: NVIDIA RTX 3070Ti
 
-CPU is AMD Ryzen 5 5600x
+Python Version: 3.7
 
-GPU is NVIDIA [GeForce RTX 3070 Ti]
+Pytorch Version: 1.8.0
 
-Pytorch Version 1.8.0
+TVM version: 0.8.dev
 
-TVM Version 0.8.dev0 
 
-part of the result is in notes.txt
+## Transformer
+transformer (https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html)
+
+模型相关参数设置：
+- d_model = 512 (feature size)
+- nheader = 16
+- num_encoder_layers = 12
+- num_decoder_layers = 6
+- 其他参数默认
+
+输入设置参考：
+- src = random tensor with shape (10,32,512) # (S,N,E)
+- tgt = random tensor with shape (20,32,512) # (T,N,E)
+- 其他参数默认
+
+### Unoptimized Performance (in ms):
+
+CPU版本 {'mean': 261.97880415005784, 'median': 261.69940710024093, 'std': 0.7671719541232292}
+
+CUDA版本 {'mean': 75.53232621000012, 'median': 76.68678340000028, 'std': 3.5133938666919913}
+
+优化使用TVM提供的AutoTVM
+- tuner = XGBTuner # CPU verison use RandomTuner
+- n_trails = 2000 # 搜索的尝试次数，越大越好。CPU推荐1500，GPU推荐3000-4000。
+- early_stopping = 600 # 如果累计600次没超过历史性能最高值，就结束当前搜索
+- 以上是影响最大的因素
+
+### Optimized Performance (in ms):
+
+CPU版本 
+
+CUDA版本 
+
+---
+
+## Bert
+Bert-base-uncased (https://huggingface.co/bert-base-uncased)
+
+模型相关参数设置：
+- hidden_size = 768
+- num_hidden_layers = 12
+- num_attention_heads = 12
+- (其实全部默认参数)
+
+输入设置参考：
+- batchsize = 1
+- seq_len = 512 
+
+### Unoptimized Performance (in ms):
+CPU版本 {'mean': 1323.46220884996, 'median': 1320.1354465498298, 'std': 11.709776383482959}
+
+CUDA版本 unoptimized: {'mean': 242.44719299003918, 'median': 249.41605134999918, 'std': 20.962010872337736}
+
+优化使用TVM提供的AutoTVM
+- tuner = XGBTuner 
+- n_trails = 2000 # 搜索的尝试次数，越大越好。CPU推荐1500，GPU推荐3000-4000。
+- early_stopping = 600 # 如果累计600次没超过历史性能最高值，就结束当前搜索
+- 以上是影响最大的因素
+
+### Optimized Performance (in ms):
+
+CPU版本 
+
+CUDA版本 
+
+
