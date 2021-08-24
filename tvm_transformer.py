@@ -1,14 +1,28 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import tvm
+from tvm import relay
+from tvm.contrib import graph_executor
+
+###############################
+# change your config here
+# you should specify the cpu model using "-mcpu=" argument
+# or just delete "-mcpu=znver3"
+src_shape = (10,32,512)
+tgt_shape = (20,32,512)
+n_trails = 2000   		# higher is better. 
+n_early_stopping = 600		# higher is better. 
+target = "llvm -mcpu=znver3"
+##############################
 
 transformer_model = nn.Transformer(nhead=16,num_encoder_layers=12)
 transformer_model.eval()
 
 np.random.seed(2333)
-src = np.random.uniform(size=(10,32,512)).astype("float32") # shape (S,N,E)
+src = np.random.uniform(size=src_shape).astype("float32") # shape (S,N,E)
 np.random.seed(2444)
-tgt = np.random.uniform(size=(20,32,512)).astype("float32") # shape (T,N,E)
+tgt = np.random.uniform(size=tgt_shape).astype("float32") # shape (T,N,E)
 
 
 src_tensor = torch.tensor(src)
@@ -22,21 +36,14 @@ traced_model = torch.jit.trace(transformer_model, dummy_input)
 traced_model.eval()
 
 
-
-import tvm
-from tvm import relay
-from tvm.contrib import graph_executor
-
-
 script_module = traced_model
-input_infos = [("src",((10,32,512),"float32")),("tgt",((20,32,512),"float32"))]
+input_infos = [("src",(src_shape,"float32")),("tgt",(tgt_shape,"float32"))]
 mod, params = relay.frontend.from_pytorch(script_module, input_infos)
 
 #######################################
 # compile on cpu
 print("############################")
 print("Deploy on CPU, build the relay.")
-target = "llvm -mcpu=znver3"
 
 with tvm.transform.PassContext(opt_level=3):
     lib = relay.build(mod, target=target, params=params)
@@ -54,7 +61,7 @@ dtype = "float32"
 module.set_input("src",src,tgt=tgt)
 
 module.run()
-output_shape = (20,32,512)
+output_shape = tgt_shape
 tvm_output = module.get_output(0, tvm.nd.empty(output_shape)).numpy()
 
 # print(tvm_output)
@@ -98,14 +105,14 @@ print(unoptimized)
 #
 
 import tvm.auto_scheduler as auto_scheduler
-from tvm.autotvm.tuner import XGBTuner
+from tvm.autotvm.tuner import RandomTuner
 from tvm import autotvm
 
 print("##############################")
 print("Auto Tuning CPU")
 
-number = 10
-repeat = 1
+number = 4
+repeat = 3
 min_repeat_ms = 0  # since we're tuning on a CPU, can be set to 0
 timeout = 10  # in seconds
 
@@ -119,9 +126,9 @@ runner = autotvm.LocalRunner(
 )
 
 tuning_option = {
-    "tuner": "xgb",
-    "trials": 50,
-    "early_stopping": 100,
+    "tuner": "random",
+    "trials": n_trails,
+    "early_stopping": n_early_stopping,
     "measure_option": autotvm.measure_option(
         builder=autotvm.LocalBuilder(build_func="default"), runner=runner
     ),
@@ -133,7 +140,9 @@ tasks = autotvm.task.extract_from_program(mod["main"], target=target, params=par
 # Tune the extracted tasks sequentially.
 for i, task in enumerate(tasks):
     prefix = "[Task %2d/%2d] " % (i + 1, len(tasks))
-    tuner_obj = XGBTuner(task, loss_type="rank")
+    # XGBTuner will generate bug in this case, use RandomTuner
+    # Refer to https://discuss.tvm.apache.org/t/autotvm-bug-bitserial-dense-arm-cpu/8429
+    tuner_obj = RandomTuner(task) 
     tuner_obj.tune(
         n_trial=min(tuning_option["trials"], len(task.config_space)),
         early_stopping=tuning_option["early_stopping"],
@@ -166,7 +175,7 @@ module = graph_executor.GraphModule(lib["default"](dev))
 module.set_input("src",src,tgt=tgt)
 
 module.run()
-output_shape = (20,32,512)
+output_shape = tgt_shape
 tvm_output = module.get_output(0, tvm.nd.empty(output_shape)).numpy()
 
 # print(tvm_output)

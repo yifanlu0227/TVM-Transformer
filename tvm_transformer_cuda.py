@@ -1,14 +1,26 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import tvm
+from tvm import relay
+from tvm.contrib import graph_executor
+
+###############################
+# change your config here
+src_shape = (10,32,512)
+tgt_shape = (20,32,512)
+n_trails = 2000   		# higher is better. 
+n_early_stopping = 600		# higher is better. 
+target = tvm.target.cuda()
+##############################
 
 transformer_model = nn.Transformer(nhead=16,num_encoder_layers=12)
 transformer_model.eval()
 
 np.random.seed(2333)
-src = np.random.uniform(size=(10,32,512)).astype("float32") # shape (S,N,E)
+src = np.random.uniform(size=src_shape).astype("float32") # shape (S,N,E)
 np.random.seed(2444)
-tgt = np.random.uniform(size=(20,32,512)).astype("float32") # shape (T,N,E)
+tgt = np.random.uniform(size=tgt_shape).astype("float32") # shape (T,N,E)
 
 
 src_tensor = torch.tensor(src)
@@ -21,15 +33,8 @@ dummy_input = [src_tensor,tgt_tensor]
 traced_model = torch.jit.trace(transformer_model, dummy_input)
 traced_model.eval()
 
-
-
-import tvm
-from tvm import relay
-from tvm.contrib import graph_executor
-
-
 script_module = traced_model
-input_infos = [("src",((10,32,512),"float32")),("tgt",((20,32,512),"float32"))]
+input_infos = [("src",(src_shape,"float32")),("tgt",(tgt_shape,"float32"))]
 mod, params = relay.frontend.from_pytorch(script_module, input_infos)
 
 #######################################
@@ -50,11 +55,10 @@ print("#############################")
 print("TVM runtime")
 dtype = "float32"
 
-
 module.set_input("src",src,tgt=tgt)
 
 module.run()
-output_shape = (20,32,512)
+output_shape = tgt_shape
 tvm_output = module.get_output(0, tvm.nd.empty(output_shape)).numpy()
 
 # print(tvm_output)
@@ -105,7 +109,7 @@ print("##############################")
 print("Auto Tuning CUDA")
 
 target = tvm.target.cuda()
-number = 20
+number = 4
 repeat = 3
 min_repeat_ms = 150  	# Using min_repeat_ms can dynamically adjusts number, so it is recommended. 
 			#The typical value for NVIDIA GPU is 150 ms.
@@ -121,8 +125,8 @@ runner = autotvm.LocalRunner(
 
 tuning_option = {
     "tuner": "xgb",
-    "trials": 200,
-    "early_stopping": 100,
+    "trials": n_trails,
+    "early_stopping": n_early_stopping,
     "measure_option": autotvm.measure_option(
         builder=autotvm.LocalBuilder(build_func="default"), runner=runner
     ),
@@ -167,7 +171,7 @@ module = graph_executor.GraphModule(lib["default"](dev))
 module.set_input("src",src,tgt=tgt)
 
 module.run()
-output_shape = (20,32,512)
+output_shape = tgt_shape
 tvm_output = module.get_output(0, tvm.nd.empty(output_shape)).numpy()
 
 # print(tvm_output)
