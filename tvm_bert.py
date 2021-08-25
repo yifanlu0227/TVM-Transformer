@@ -10,7 +10,7 @@ from tvm.contrib import graph_executor
 # change your config here
 n_trails = 2000   			# higher is better. 
 n_early_stopping = 600		# higher is better. 
-set_seqlen_myself = True	# if set to be true, the model will use the seq_len you set below
+set_seqlen_myself = False	# if set to be true, the model will use the seq_len you set below
 seq_len = 512				# only take effect when set_seqlen_myself = True
 target = "llvm -mcpu=znver3"
 ##############################
@@ -138,7 +138,7 @@ print(unoptimized)
 #
 
 import tvm.auto_scheduler as auto_scheduler
-from tvm.autotvm.tuner import XGBTuner
+from tvm.autotvm.tuner import XGBTuner,RandomTuner
 from tvm import autotvm
 
 print("##############################")
@@ -173,7 +173,7 @@ tasks = autotvm.task.extract_from_program(mod["main"], target=target, params=par
 # Tune the extracted tasks sequentially.
 for i, task in enumerate(tasks):
     prefix = "[Task %2d/%2d] " % (i + 1, len(tasks))
-    tuner_obj = XGBTuner(task, loss_type="rank")
+    tuner_obj = RandomTuner(task,)
     tuner_obj.tune(
         n_trial=min(tuning_option["trials"], len(task.config_space)),
         early_stopping=tuning_option["early_stopping"],
@@ -222,3 +222,7 @@ print("optimized: %s" % (optimized))
 print("unoptimized: %s" % (unoptimized))
 
 
+with open("result.txt","a") as f:
+    f.write("bert cpu:\n")
+    f.write("optimized: %s\n" % (optimized))
+    f.write("unoptimized: %s\n" % (unoptimized))

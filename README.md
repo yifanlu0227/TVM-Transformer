@@ -42,9 +42,9 @@ CUDA版本 {'mean': 75.53232621000012, 'median': 76.68678340000028, 'std': 3.513
 
 ### Optimized Performance (in ms):
 
-CPU版本 
+CPU版本 {'mean': 95.10979770999256, 'median': 95.10866304990486, 'std': 0.06900490877264685}
 
-CUDA版本 
+CUDA版本 {'mean': 36.3591017899995, 'median': 36.77307985000198, 'std': 1.2366104747615936}
 
 ---
 
@@ -64,18 +64,19 @@ Bert-base-uncased (https://huggingface.co/bert-base-uncased)
 ### Unoptimized Performance (in ms):
 CPU版本 {'mean': 1323.46220884996, 'median': 1320.1354465498298, 'std': 11.709776383482959}
 
-CUDA版本 unoptimized: {'mean': 242.44719299003918, 'median': 249.41605134999918, 'std': 20.962010872337736}
+CUDA版本 {'mean': 242.44719299003918, 'median': 249.41605134999918, 'std': 20.962010872337736}
 
 优化使用TVM提供的AutoTVM
-- tuner = XGBTuner 
+- tuner = XGBTuner # CPU version use RandomTuner
 - n_trails = 2000 # 搜索的尝试次数，越大越好。CPU推荐1500，GPU推荐3000-4000。
 - early_stopping = 600 # 如果累计600次没超过历史性能最高值，就结束当前搜索
 - 以上是影响最大的因素
 
 ### Optimized Performance (in ms):
 
-CPU版本 
+CPU版本 {'mean': 339.4948378801928, 'median': 339.75638930023706, 'std': 1.0983344402061206}
 
-CUDA版本 
+CUDA版本 {'mean': 169.0238639299787, 'median': 169.95936239982257, 'std': 2.988801769889063}
+
 
 

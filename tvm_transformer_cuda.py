@@ -193,3 +193,8 @@ optimized = {"mean": np.mean(optimized), "median": np.median(optimized), "std": 
 print("optimized: %s" % (optimized))
 print("unoptimized: %s" % (unoptimized))
 
+with open("result.txt","a") as f:
+    f.write("transformer cuda:\n")
+    f.write("optimized: %s\n" % (optimized))
+    f.write("unoptimized: %s\n" % (unoptimized))
+

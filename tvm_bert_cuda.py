@@ -10,7 +10,7 @@ from tvm.contrib import graph_executor
 # change your config here
 n_trails = 2000   			# higher is better. 
 n_early_stopping = 600		# higher is better. 
-set_seqlen_myself = True	# if set to be true, the model will use the seq_len you set below
+set_seqlen_myself = False	# if set to be true, the model will use the seq_len you set below
 seq_len = 512				# only take effect when set_seqlen_myself = True
 target = tvm.target.cuda()
 ##############################
@@ -221,3 +221,7 @@ print("optimized: %s" % (optimized))
 print("unoptimized: %s" % (unoptimized))
 
 
+with open("result.txt","a") as f:
+    f.write("bert cuda:\n")
+    f.write("optimized: %s\n" % (optimized))
+    f.write("unoptimized: %s\n" % (unoptimized))
